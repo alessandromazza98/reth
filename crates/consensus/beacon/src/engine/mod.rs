@@ -11,7 +11,7 @@ use futures::{Future, StreamExt};
 use reth_db::database::Database;
 use reth_interfaces::{
     blockchain_tree::{
-        error::{BlockchainTreeError, CanonicalError, InsertBlockError, InsertBlockErrorKind},
+        error::{InsertBlockError, InsertBlockErrorKind},
         BlockStatus, BlockchainTreeEngine, CanonicalOutcome, InsertPayloadOk,
     },
     consensus::ForkchoiceState,
@@ -690,7 +690,7 @@ where
                 PayloadStatus::new(PayloadStatusEnum::Valid, Some(state.head_block_hash))
             }
             Err(error) => {
-                if let Error::Canonical(ref err) = error {
+                if let Error::Execution(ref err) = error {
                     if err.is_fatal() {
                         tracing::error!(target: "consensus::engine", ?err, "Encountered fatal error");
                         return Err(error)
@@ -929,8 +929,10 @@ where
 
         #[allow(clippy::single_match)]
         match &error {
-            Error::Canonical(
-                error @ CanonicalError::Validation(BlockValidationError::BlockPreMerge { .. }),
+            Error::Execution(
+                error @ BlockExecutionError::Validation(BlockValidationError::BlockPreMerge {
+                    ..
+                }),
             ) => {
                 warn!(target: "consensus::engine", ?error, ?state, "Failed to canonicalize the head hash");
                 return PayloadStatus::from_status(PayloadStatusEnum::Invalid {
@@ -1495,9 +1497,7 @@ where
                     // it's part of the canonical chain: if it's the safe or the finalized block
                     if matches!(
                         err,
-                        Error::Canonical(CanonicalError::BlockchainTree(
-                            BlockchainTreeError::BlockHashNotFoundInChain { .. }
-                        ))
+                        Error::Execution(BlockExecutionError::BlockHashNotFoundInChain { .. })
                     ) {
                         // if the inserted block is the currently targeted `finalized` or `safe`
                         // block, we will attempt to make them canonical,

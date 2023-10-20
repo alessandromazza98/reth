@@ -31,7 +31,7 @@ impl Command {
         // create hashmap
         let mut opcodes: HashMap<u8, usize> = HashMap::new();
         info!("start opcodes processing...");
-        for (address, bytecode) in bytecodes {
+        for (_, bytecode) in bytecodes {
             let bytes = bytecode.bytes();
             let range = bytes.as_ptr_range();
             let start = range.start;
@@ -39,26 +39,29 @@ impl Command {
             let end = range.end;
             while iterator < end {
                 let opcode = unsafe { *iterator };
-                if opcode >= opcode::PUSH1 && opcode <= opcode::PUSH32 {
-                    // it's a PUSH opcode
-                    *opcodes.entry(opcode).or_insert(1) += 1;
-                    let push_offset = opcode.wrapping_sub(opcode::PUSH1);
-                    // SAFETY: iterator access range is checked in the while loop
-                    iterator = unsafe { iterator.offset((push_offset + 2) as isize) };
+                // check if opcode is valid. If it's not, set it as the `INVALID` opcode
+                let opcode = if OpCode::new(opcode).is_some() {
+                    opcode
                 } else {
-                    // not a PUSH opcode
-                    *opcodes.entry(opcode).or_insert(1) += 1;
-                    // SAFETY: iterator access range is checked in the while loop
-                    iterator = unsafe { iterator.offset(1) };
-                }
+                    254 // 0xFE: `INVALID` OPCODE
+                };
+                *opcodes.entry(opcode).or_insert(0) += 1;
+                let offset = if (opcode::PUSH1..=opcode::PUSH32).contains(&opcode) {
+                    // it's a PUSH opcode
+                    opcode.wrapping_sub(opcode::PUSH1) + 2
+                } else {
+                    1
+                };
+                // SAFETY: iterator access range is checked in the while loop
+                iterator = unsafe { iterator.offset(offset as isize) };
             }
         }
         info!("opcodes processing done!");
         info!("start opcodes printing...");
         for (opcode, occurencies) in opcodes {
             match OpCode::new(opcode) {
-                Some(op) => info!("{}: {}", op, occurencies),
-                None => info!("{}: {}", opcode, occurencies),
+                Some(op) => println!("{}: {}", op, occurencies),
+                None => println!("{}: {}", opcode, occurencies),
             };
         }
         info!("opcodes printing done!");

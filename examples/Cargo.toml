@@ -36,3 +36,7 @@ path = "network.rs"
 [[example]]
 name = "network-txpool"
 path = "network-txpool.rs"
+
+[[example]]
+name = "count-opcodes"
+path = "count-opcodes.rs"

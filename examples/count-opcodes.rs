@@ -3,116 +3,14 @@ use reth_revm::interpreter::{opcode, OpCode};
 use std::collections::{HashMap, VecDeque};
 
 fn main() -> eyre::Result<()> {
-    // get bytecodes table
     let test_bytecode = get_test_bytecode_occurrencies_1();
     let bytecode = Bytecode::new_raw(hex::decode(&test_bytecode).unwrap().into());
-
-    // create hashmap
-    let mut opcodes: HashMap<u8, usize> = HashMap::new();
-    let mut tuple_opcodes: HashMap<[u8; 2], usize> = HashMap::new();
-    let mut triplets_opcodes: HashMap<[u8; 3], usize> = HashMap::new();
-    let mut quadruplets_opcodes: HashMap<[u8; 4], usize> = HashMap::new();
-    let mut previous_opcode = FixedQueue::new(4);
-    // filter bytecode removing all PUSH data
     let bytes = filter_bytecode_bytes(bytecode.bytes());
-    let range = bytes.as_ptr_range();
-    let start = range.start;
-    let mut iterator = start;
-    let end = range.end;
-    while iterator < end {
-        let opcode = unsafe { *iterator };
-        // check if it is a valid opcode
-        assert_ne!(OpCode::new(opcode), None);
-        *opcodes.entry(opcode).or_insert(0) += 1;
-        if let Some(previous_opcode0) = previous_opcode.get(0) {
-            if let Some(previous_opcode1) = previous_opcode.get(1) {
-                if let Some(previous_opcode2) = previous_opcode.get(2) {
-                    if let Some(previous_opcode3) = previous_opcode.get(3) {
-                        *quadruplets_opcodes
-                            .entry([previous_opcode1, previous_opcode2, previous_opcode3, opcode])
-                            .or_insert(0) += 1;
-                        *tuple_opcodes.entry([previous_opcode3, opcode]).or_insert(0) += 1;
-                        *triplets_opcodes
-                            .entry([previous_opcode2, previous_opcode3, opcode])
-                            .or_insert(0) += 1;
-                    } else {
-                        *quadruplets_opcodes
-                            .entry([previous_opcode0, previous_opcode1, previous_opcode2, opcode])
-                            .or_insert(0) += 1;
-                        *tuple_opcodes.entry([previous_opcode2, opcode]).or_insert(0) += 1;
-                        *triplets_opcodes
-                            .entry([previous_opcode1, previous_opcode2, opcode])
-                            .or_insert(0) += 1;
-                    }
-                } else {
-                    *triplets_opcodes
-                        .entry([previous_opcode0, previous_opcode1, opcode])
-                        .or_insert(0) += 1;
-                    *tuple_opcodes.entry([previous_opcode1, opcode]).or_insert(0) += 1;
-                }
-            } else {
-                *tuple_opcodes.entry([previous_opcode0, opcode]).or_insert(0) += 1;
-            }
-        }
-        previous_opcode.insert(opcode);
-        // SAFETY: iterator access range is checked in the while loop
-        iterator = unsafe { iterator.offset(1 as isize) };
-    }
-    for (opcode, occurencies) in opcodes {
-        match OpCode::new(opcode) {
-            Some(op) => println!("{}: {}", op, occurencies),
-            None => println!("{}: {}", opcode, occurencies),
-        };
-    }
-    println!("----------------------------------------------");
-    for (tuple_opcode, occurencies) in tuple_opcodes {
-        let op1 = tuple_opcode[0];
-        let op2 = tuple_opcode[1];
-        match OpCode::new(op1) {
-            Some(op1) => match OpCode::new(op2) {
-                Some(op2) => println!("{} {}: {}", op1, op2, occurencies),
-                None => println!("{} {}: {}", op1, op2, occurencies),
-            },
-            None => println!("{} {}: {}", op1, op2, occurencies),
-        };
-    }
-    println!("----------------------------------------------");
-    for (triplet_opcodes, occurencies) in triplets_opcodes {
-        let op1 = triplet_opcodes[0];
-        let op2 = triplet_opcodes[1];
-        let op3 = triplet_opcodes[2];
-        match OpCode::new(op1) {
-            Some(op1) => match OpCode::new(op2) {
-                Some(op2) => match OpCode::new(op3) {
-                    Some(op3) => println!("{} {} {}: {}", op1, op2, op3, occurencies),
-                    None => unreachable!(),
-                },
-                None => unreachable!(),
-            },
-            None => unreachable!(),
-        };
-    }
-    println!("----------------------------------------------");
-    for (quadruplet_opcodes, occurencies) in quadruplets_opcodes {
-        let op1 = quadruplet_opcodes[0];
-        let op2 = quadruplet_opcodes[1];
-        let op3 = quadruplet_opcodes[2];
-        let op4 = quadruplet_opcodes[3];
-        match OpCode::new(op1) {
-            Some(op1) => match OpCode::new(op2) {
-                Some(op2) => match OpCode::new(op3) {
-                    Some(op3) => match OpCode::new(op4) {
-                        Some(op4) => println!("{} {} {} {}: {}", op1, op2, op3, op4, occurencies),
-                        None => unreachable!(),
-                    },
-                    None => unreachable!(),
-                },
-                None => unreachable!(),
-            },
-            None => unreachable!(),
-        };
-    }
-    println!("----------------------------------------------");
+
+    let mut counter = OpCodeCounter::new();
+    counter.count_sequences(&bytes);
+
+    counter.print_counts();
     Ok(())
 }
 
@@ -122,12 +20,10 @@ struct FixedQueue {
 }
 
 impl FixedQueue {
-    // Initialize FixedQueue with a given capacity
     fn new(capacity: usize) -> Self {
         Self { inner: VecDeque::with_capacity(capacity), capacity }
     }
 
-    // Insert an element, and remove the oldest if over capacity
     fn insert(&mut self, value: u8) {
         if self.inner.len() >= self.capacity {
             self.inner.pop_front();
@@ -135,8 +31,123 @@ impl FixedQueue {
         self.inner.push_back(value);
     }
 
-    fn get(&self, index: u8) -> Option<u8> {
-        self.inner.get(index as usize).map(|op| *op)
+    fn as_tuple(&self) -> Option<(u8, u8)> {
+        if self.inner.len() < 2 {
+            return None
+        }
+        Some((self.inner[self.inner.len() - 2], self.inner[self.inner.len() - 1]))
+    }
+
+    fn as_triplet(&self) -> Option<(u8, u8, u8)> {
+        if self.inner.len() < 3 {
+            return None
+        }
+        Some((
+            self.inner[self.inner.len() - 3],
+            self.inner[self.inner.len() - 2],
+            self.inner[self.inner.len() - 1],
+        ))
+    }
+
+    fn as_quadruplet(&self) -> Option<(u8, u8, u8, u8)> {
+        if self.inner.len() < 4 {
+            return None
+        }
+        Some((self.inner[0], self.inner[1], self.inner[2], self.inner[3]))
+    }
+}
+
+struct OpCodeCounter {
+    opcodes: HashMap<u8, usize>,
+    tuple_opcodes: HashMap<[u8; 2], usize>,
+    triplets_opcodes: HashMap<[u8; 3], usize>,
+    quadruplets_opcodes: HashMap<[u8; 4], usize>,
+    previous_opcodes: FixedQueue,
+}
+
+impl OpCodeCounter {
+    fn new() -> Self {
+        Self {
+            opcodes: HashMap::new(),
+            tuple_opcodes: HashMap::new(),
+            triplets_opcodes: HashMap::new(),
+            quadruplets_opcodes: HashMap::new(),
+            previous_opcodes: FixedQueue::new(4),
+        }
+    }
+
+    fn count_sequences(&mut self, bytes: &Bytes) {
+        for opcode in bytes {
+            self.increment_single_opcode_count(*opcode);
+            self.increment_composite_opcode_count(*opcode);
+        }
+    }
+
+    fn increment_single_opcode_count(&mut self, opcode: u8) {
+        *self.opcodes.entry(opcode).or_insert(0) += 1;
+    }
+
+    fn increment_composite_opcode_count(&mut self, opcode: u8) {
+        self.previous_opcodes.insert(opcode);
+
+        if let Some((op1, op2, op3, op4)) = self.previous_opcodes.as_quadruplet() {
+            *self.quadruplets_opcodes.entry([op1, op2, op3, op4]).or_insert(0) += 1;
+        }
+
+        if let Some((op2, op3, op4)) = self.previous_opcodes.as_triplet() {
+            *self.triplets_opcodes.entry([op2, op3, op4]).or_insert(0) += 1;
+        }
+
+        if let Some((op3, op4)) = self.previous_opcodes.as_tuple() {
+            *self.tuple_opcodes.entry([op3, op4]).or_insert(0) += 1;
+        }
+    }
+
+    fn print_counts(&self) {
+        println!("Single opcodes:");
+        for (opcode, occurencies) in &self.opcodes {
+            match OpCode::new(*opcode) {
+                Some(op) => println!("{}: {}", op, occurencies),
+                None => println!("{}: {}", opcode, occurencies),
+            };
+        }
+        println!("----------------------------------------------");
+
+        println!("Tuple opcodes:");
+        for (tuple_opcode, occurencies) in &self.tuple_opcodes {
+            let op1 = OpCode::new(tuple_opcode[0])
+                .unwrap_or_else(|| panic!("Invalid opcode: {}", tuple_opcode[0]));
+            let op2 = OpCode::new(tuple_opcode[1])
+                .unwrap_or_else(|| panic!("Invalid opcode: {}", tuple_opcode[1]));
+            println!("{} {}: {}", op1, op2, occurencies);
+        }
+        println!("----------------------------------------------");
+
+        println!("Triplet opcodes:");
+        for (triplet_opcodes, occurencies) in &self.triplets_opcodes {
+            let op1 = OpCode::new(triplet_opcodes[0])
+                .unwrap_or_else(|| panic!("Invalid opcode: {}", triplet_opcodes[0]));
+            let op2 = OpCode::new(triplet_opcodes[1])
+                .unwrap_or_else(|| panic!("Invalid opcode: {}", triplet_opcodes[1]));
+            let op3 = OpCode::new(triplet_opcodes[2])
+                .unwrap_or_else(|| panic!("Invalid opcode: {}", triplet_opcodes[2]));
+            println!("{} {} {}: {}", op1, op2, op3, occurencies);
+        }
+        println!("----------------------------------------------");
+
+        println!("Quadruplet opcodes:");
+        for (quadruplet_opcodes, occurencies) in &self.quadruplets_opcodes {
+            let op1 = OpCode::new(quadruplet_opcodes[0])
+                .unwrap_or_else(|| panic!("Invalid opcode: {}", quadruplet_opcodes[0]));
+            let op2 = OpCode::new(quadruplet_opcodes[1])
+                .unwrap_or_else(|| panic!("Invalid opcode: {}", quadruplet_opcodes[1]));
+            let op3 = OpCode::new(quadruplet_opcodes[2])
+                .unwrap_or_else(|| panic!("Invalid opcode: {}", quadruplet_opcodes[2]));
+            let op4 = OpCode::new(quadruplet_opcodes[3])
+                .unwrap_or_else(|| panic!("Invalid opcode: {}", quadruplet_opcodes[3]));
+            println!("{} {} {} {}: {}", op1, op2, op3, op4, occurencies);
+        }
+        println!("----------------------------------------------");
     }
 }
 

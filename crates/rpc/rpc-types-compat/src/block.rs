@@ -69,14 +69,21 @@ pub fn from_block_full<T: TransactionCompat>(
     let block_number = block.block.number;
     let base_fee_per_gas = block.block.base_fee_per_gas;
 
-    // NOTE: we can safely remove the body here because not needed to finalize the `Block` in
-    // `from_block_with_transactions`, however we need to compute the length before
     let block_length = block.block.length();
     let transactions = std::mem::take(&mut block.block.body.transactions);
-    let transactions_with_senders = transactions.into_iter().zip(block.senders);
-    let transactions = transactions_with_senders
+
+    let transactions = transactions
+        .into_iter()
         .enumerate()
-        .map(|(idx, (tx, sender))| {
+        .map(|(idx, tx)| {
+            // Try to get sender from block.senders first
+            let sender = if let Some(sender) = block.senders.get(idx).copied() {
+                Ok(sender)
+            } else {
+                // Fall back to unchecked recovery
+                tx.recover_signer_unchecked().ok_or(BlockError::InvalidSignature)
+            }?;
+
             let tx_hash = tx.hash();
             let signed_tx_ec_recovered = tx.with_signer(sender);
             let tx_info = TransactionInfo {
@@ -87,9 +94,13 @@ pub fn from_block_full<T: TransactionCompat>(
                 index: Some(idx as u64),
             };
 
-            from_recovered_with_block_context::<T>(signed_tx_ec_recovered, tx_info, tx_resp_builder)
+            Ok(from_recovered_with_block_context::<T>(
+                signed_tx_ec_recovered,
+                tx_info,
+                tx_resp_builder,
+            ))
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, BlockError>>()?;
 
     Ok(from_block_with_transactions(
         block_length,

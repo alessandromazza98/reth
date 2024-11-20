@@ -35,7 +35,11 @@ pub trait BlockchainTreeEngine: BlockchainTreeViewer + Send + Sync {
         validation_kind: BlockValidationKind,
     ) -> Result<InsertPayloadOk, InsertBlockError> {
         match block.try_seal_with_senders() {
-            Ok(block) => self.insert_block(block, validation_kind),
+            Ok(block) => {
+                println!("insert_block_without_senders");
+                println!("block senders: {:?}", block.senders);
+                self.insert_block(block, validation_kind)
+            }
             Err(block) => Err(InsertBlockError::sender_recovery_error(block)),
         }
     }

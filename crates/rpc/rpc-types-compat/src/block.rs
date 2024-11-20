@@ -73,7 +73,9 @@ pub fn from_block_full<T: TransactionCompat>(
     // `from_block_with_transactions`, however we need to compute the length before
     let block_length = block.block.length();
     let transactions = std::mem::take(&mut block.block.body.transactions);
-    let transactions_with_senders = transactions.into_iter().zip(block.senders);
+    let senders = block.senders;
+    println!("block senders: {:?}", senders);
+    let transactions_with_senders = transactions.into_iter().zip(senders);
     let transactions = transactions_with_senders
         .enumerate()
         .map(|(idx, (tx, sender))| {

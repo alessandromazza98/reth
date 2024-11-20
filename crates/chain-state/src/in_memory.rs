@@ -290,6 +290,7 @@ impl CanonicalInMemoryState {
     pub fn update_chain(&self, new_chain: NewCanonicalChain) {
         match new_chain {
             NewCanonicalChain::Commit { new } => {
+                println!("update_chain - new chain: {:?}", new);
                 self.update_blocks(new, vec![]);
             }
             NewCanonicalChain::Reorg { new, old } => {
@@ -874,6 +875,7 @@ impl NewCanonicalChain {
                     );
                     chain
                 }));
+                println!("to_chain_notification - new chain: {:?}", new.blocks());
                 CanonStateNotification::Commit { new }
             }
             Self::Reorg { new, old } => {

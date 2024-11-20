@@ -55,6 +55,11 @@ impl Chain {
         let blocks = blocks.into_iter().map(|b| (b.number, b)).collect::<BTreeMap<_, _>>();
         debug_assert!(!blocks.is_empty(), "Chain should have at least one block");
 
+        println!("new chain - blocks: {:?}", blocks);
+        for (_, block) in blocks.iter() {
+            println!("new chain - block number: {:?} - block senders: {:?}", block.header.number, block.senders);
+        }
+
         Self { blocks, execution_outcome, trie_updates }
     }
 

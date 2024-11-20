@@ -142,6 +142,7 @@ impl AppendableChain {
             BlockAttachment::HistoricalFork,
             block_validation_kind,
         )?;
+        println!("new_chain_fork - after validate_and_execute - block state: {:?}", block_state);
         // extending will also optimize few things, mostly related to selfdestruct and wiping of
         // storage.
         execution_outcome.extend(block_state);

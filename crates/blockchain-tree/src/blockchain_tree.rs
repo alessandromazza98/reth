@@ -327,6 +327,7 @@ where
         // check if block parent can be found in any side chain.
         if let Some(chain_id) = self.block_indices().get_side_chain_id(&parent.hash) {
             // found parent in side tree, try to insert there
+            println!("try_insert_validated_block - found parent in side tree, try to insert into side chain");
             return self.try_insert_block_into_side_chain(block, chain_id, block_validation_kind);
         }
 
@@ -770,18 +771,19 @@ where
         block: SealedBlockWithSenders,
         block_validation_kind: BlockValidationKind,
     ) -> Result<InsertPayloadOk, InsertBlockError> {
+        println!("insert_block - block senders: {:?}", block.senders);
         // check if we already have this block
         match self.is_block_known(block.num_hash()) {
             Ok(Some(status)) => return Ok(InsertPayloadOk::AlreadySeen(status)),
             Err(err) => return Err(InsertBlockError::new(block.block, err)),
             _ => {}
         }
-
+        println!("insert_block - after block is not known");
         // validate block consensus rules
         if let Err(err) = self.validate_block(&block) {
             return Err(InsertBlockError::consensus_error(err, block.block));
         }
-
+        println!("insert_block - after validate_block");
         let status = self
             .try_insert_validated_block(block.clone(), block_validation_kind)
             .map_err(|kind| InsertBlockError::new(block.block, kind))?;
@@ -1134,6 +1136,7 @@ where
             CanonStateNotification::Commit { new: Arc::new(new_canon_chain) }
         } else {
             // It forks to canonical block that is not the tip.
+            info!(target: "blockchain_tree", "Committing new canonical chain to database - not the tip");
             let canon_fork: BlockNumHash = new_canon_chain.fork_block();
             // sanity check
             if self.block_indices().canonical_hash(&canon_fork.number) != Some(canon_fork.hash) {
@@ -1177,6 +1180,7 @@ where
             } else {
                 // error here to confirm that we are reverting nothing from db.
                 error!(target: "blockchain_tree", %block_hash, "Nothing was removed from database");
+                info!(target: "blockchain_tree", "new_canon_chain block senders not the tip: {:?}", new_canon_chain.tip().senders);
                 CanonStateNotification::Commit { new: Arc::new(new_canon_chain) }
             }
         };
@@ -1305,6 +1309,7 @@ where
         &self,
         revert_until: BlockNumber,
     ) -> Result<Option<Chain>, CanonicalError> {
+        info!(target: "blockchain_tree", "revert_canonical_from_database - revert_until: {:?}", revert_until);
         // This should only happen when an optimistic sync target was re-orged.
         //
         // Static files generally contain finalized data. The blockchain tree only deals

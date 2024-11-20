@@ -476,9 +476,14 @@ where
                         }
                         CacheAction::CacheNewCanonicalChain { chain_change } => {
                             println!("cache_new_canonical_chain - chain_change blocks: {:?}", chain_change.blocks);
-                            for block in chain_change.blocks {
+                            for mut block in chain_change.blocks {
                                 println!("cache_new_canonical_chain - block hash: {:?} - block number: {:?}", block.hash(), block.header.number);
                                 println!("cache_new_canonical_chain - block senders: {:?}", block.senders);
+                                if block.senders.len() != block.body.transactions.len() {
+                                    if let Some(senders) = block.body.recover_signers_unchecked() {
+                                        block.senders = senders;
+                                    }
+                                }
                                 this.on_new_block(block.hash(), Ok(Some(Arc::new(block))));
                             }
 

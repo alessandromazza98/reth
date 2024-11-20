@@ -150,6 +150,7 @@ impl TreeState {
 
     /// Insert executed block into the state.
     fn insert_executed(&mut self, executed: ExecutedBlock) {
+        println!("insert_executed - block number: {:?} - block senders: {:?}", executed.block.number, executed.senders);
         let hash = executed.block.hash();
         let parent_hash = executed.block.parent_hash;
         let block_number = executed.block.number;

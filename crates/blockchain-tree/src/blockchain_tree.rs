@@ -672,6 +672,7 @@ where
         &mut self,
         block: SealedBlock,
     ) -> Result<InsertPayloadOk, InsertBlockError> {
+        info!(target: "blockchain_tree", "insert_block_without_senders - Inserting block without senders");
         match block.try_seal_with_senders() {
             Ok(block) => self.insert_block(block, BlockValidationKind::Exhaustive),
             Err(block) => Err(InsertBlockError::sender_recovery_error(block)),

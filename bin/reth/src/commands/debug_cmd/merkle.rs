@@ -142,6 +142,7 @@ impl<C: ChainSpecParser<ChainSpec = ChainSpec>> Command<C> {
         let mut storage_hashing_stage = StorageHashingStage::default();
         let mut merkle_stage = MerkleStage::default_execution();
 
+        info!(target: "reth::cli", "Inserting blocks and calling try_seal_with_senders");
         for block in blocks.into_iter().rev() {
             let block_number = block.number;
             let sealed_block = block

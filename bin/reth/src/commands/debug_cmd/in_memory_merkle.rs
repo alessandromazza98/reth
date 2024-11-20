@@ -166,6 +166,7 @@ impl<C: ChainSpecParser<ChainSpec = ChainSpec>> Command<C> {
 
         let provider_rw = provider_factory.provider_rw()?;
 
+        info!(target: "reth::cli", "Inserting block and calling try_seal_with_senders");
         // Insert block, state and hashes
         provider_rw.insert_historical_block(
             block

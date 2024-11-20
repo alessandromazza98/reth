@@ -79,6 +79,7 @@ impl AccountHashingStage {
         );
 
         for block in blocks {
+            println!("insert_historical_block on account hashing stage impl - this call try_seal_with_senders");
             provider.insert_historical_block(block.try_seal_with_senders().unwrap()).unwrap();
         }
         provider

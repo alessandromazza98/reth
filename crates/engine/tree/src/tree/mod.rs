@@ -1794,6 +1794,7 @@ where
         &mut self,
         block: SealedBlock,
     ) -> Result<(), InsertBlockErrorTwo> {
+        info!(target: "engine::tree", "engine_api_tree_handler buffer_block_without_senders");
         match block.try_seal_with_senders() {
             Ok(block) => self.buffer_block(block),
             Err(block) => Err(InsertBlockErrorTwo::sender_recovery_error(block)),
@@ -2118,6 +2119,7 @@ where
         &mut self,
         block: SealedBlock,
     ) -> Result<InsertPayloadOk2, InsertBlockErrorTwo> {
+        info!(target: "engine::tree", "enginea_api_tree_handler insert_block_without_senders");
         match block.try_seal_with_senders() {
             Ok(block) => self.insert_block(block),
             Err(block) => Err(InsertBlockErrorTwo::sender_recovery_error(block)),

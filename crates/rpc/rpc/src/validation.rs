@@ -394,6 +394,7 @@ where
         &self,
         request: BuilderBlockValidationRequestV3,
     ) -> RpcResult<()> {
+        println!("validate_builder_submission_v3 - this call try_seal_with_senders");
         let block = self
             .payload_validator
             .ensure_well_formed_payload(
@@ -424,6 +425,7 @@ where
         &self,
         request: BuilderBlockValidationRequestV4,
     ) -> RpcResult<()> {
+        println!("validate_builder_submission_v4 - this call try_seal_with_senders");
         let block = self
             .payload_validator
             .ensure_well_formed_payload(

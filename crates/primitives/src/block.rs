@@ -335,7 +335,10 @@ impl SealedBlock {
     pub fn try_seal_with_senders(self) -> Result<SealedBlockWithSenders, Self> {
         println!("try_seal_with_senders");
         match self.senders() {
-            Some(senders) => Ok(SealedBlockWithSenders { block: self, senders }),
+            Some(senders) => {
+                println!("try_seal_with_senders: {:?}", senders);
+                Ok(SealedBlockWithSenders { block: self, senders })
+            }
             None => Err(self),
         }
     }

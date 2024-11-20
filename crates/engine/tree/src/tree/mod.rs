@@ -2141,6 +2141,7 @@ where
         debug!(target: "engine::tree", block=?block.num_hash(), parent = ?block.parent_hash, state_root = ?block.state_root, "Inserting new block into tree");
 
         if self.block_by_hash(block.hash())?.is_some() {
+            info!(target: "engine::tree", "engine_api_tree_handler insert_block - block already exists - returning");
             return Ok(InsertPayloadOk2::AlreadySeen(BlockStatus2::Valid))
         }
 

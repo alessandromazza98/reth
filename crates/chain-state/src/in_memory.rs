@@ -625,6 +625,7 @@ impl BlockState {
     pub fn sealed_block_with_senders(&self) -> SealedBlockWithSenders {
         let block = self.block.block().clone();
         let senders = self.block.senders().clone();
+        println!("sealed_block_with_senders blockstate impl - block senders: {:?}", senders);
         SealedBlockWithSenders { block, senders }
     }
 

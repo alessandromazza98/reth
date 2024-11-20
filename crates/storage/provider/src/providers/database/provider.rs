@@ -1608,6 +1608,7 @@ impl<TX: DbTx, N: NodeTypes<ChainSpec: EthereumHardforks>> BlockReader for Datab
         id: BlockHashOrNumber,
         transaction_kind: TransactionVariant,
     ) -> ProviderResult<Option<SealedBlockWithSenders>> {
+        println!("sealed_block_with_senders databaseprovider impl");
         self.block_with_senders(
             id,
             transaction_kind,
@@ -1618,7 +1619,10 @@ impl<TX: DbTx, N: NodeTypes<ChainSpec: EthereumHardforks>> BlockReader for Datab
                     // wrt to its height and can ignore the s value check so pre
                     // EIP-2 txs are allowed
                     .try_with_senders_unchecked(senders)
-                    .map(Some)
+                    .map(|block| {
+                        println!("sealed_block_with_senders databaseprovider impl - block senders: {:?}", block.senders);
+                        Some(block)
+                    })
                     .map_err(|_| ProviderError::SenderRecoveryError)
             },
         )

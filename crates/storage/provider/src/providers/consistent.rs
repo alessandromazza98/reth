@@ -583,9 +583,12 @@ impl<N: ProviderNodeTypes> ConsistentProvider<N> {
         S: FnOnce(&DatabaseProviderRO<N::DB, N>) -> ProviderResult<R>,
         M: Fn(&BlockState) -> ProviderResult<R>,
     {
+        println!("get_in_memory_or_storage_by_block");
         if let Some(Some(block_state)) = self.head_block.as_ref().map(|b| b.block_on_chain(id)) {
+            println!("get_in_memory_or_storage_by_block - fetching from block state");
             return fetch_from_block_state(block_state)
         }
+        println!("fetching from db");
         fetch_from_db(&self.storage_provider)
     }
 }

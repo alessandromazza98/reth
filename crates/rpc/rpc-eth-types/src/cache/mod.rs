@@ -354,12 +354,15 @@ where
                     match action {
                         CacheAction::GetBlockWithSenders { block_hash, response_tx } => {
                             if let Some(block) = this.full_block_cache.get(&block_hash).cloned() {
+                                println!("get_block_with_senders - block found in full_block_cache");
+                                println!("block senders: {:?}", block.senders);
                                 let _ = response_tx.send(Ok(Some(block)));
                                 continue
                             }
 
                             // block is not in the cache, request it if this is the first consumer
                             if this.full_block_cache.queue(block_hash, Either::Left(response_tx)) {
+                                println!("get_block_with_senders - block not found in cache, queueing request");
                                 let provider = this.provider.clone();
                                 let action_tx = this.action_tx.clone();
                                 let rate_limiter = this.rate_limiter.clone();

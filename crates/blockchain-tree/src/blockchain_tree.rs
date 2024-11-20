@@ -1128,6 +1128,8 @@ where
         // If chain extends the tip
         let chain_notification = if new_canon_chain.fork_block().hash == old_tip.hash {
             // Commit new canonical chain to database.
+            info!(target: "blockchain_tree", "Committing new canonical chain to database");
+            info!(target: "blockchain_tree", "new_canon_chain block senders: {:?}", new_canon_chain.tip().senders);
             self.commit_canonical_to_database(new_canon_chain.clone(), &mut durations_recorder)?;
             CanonStateNotification::Commit { new: Arc::new(new_canon_chain) }
         } else {

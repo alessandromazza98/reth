@@ -516,13 +516,16 @@ impl NetworkManager {
             PeerMessage::NewBlockHashes(hashes) => {
                 self.within_pow_or_disconnect(peer_id, |this| {
                     // update peer's state, to track what blocks this peer has seen
+                    println!("on_peer_message - hashes: {:?}", hashes.0);
                     this.swarm.state_mut().on_new_block_hashes(peer_id, hashes.0)
                 })
             }
             PeerMessage::NewBlock(block) => {
                 self.within_pow_or_disconnect(peer_id, move |this| {
+                    println!("on_peer_message - block hash: {:?} - block number: {:?}", block.hash, block.number());
                     this.swarm.state_mut().on_new_block(peer_id, block.hash);
                     // start block import process
+                    println!("on_peer_message - block hash: {:?} - block number: {:?}", block.hash, block.number());
                     this.block_import.on_new_block(peer_id, block);
                 });
             }

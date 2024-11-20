@@ -269,6 +269,7 @@ where
 
         // cache good block
         if let Ok(Some(block)) = res {
+            println!("on_new_block - block number: {:?} - block senders: {:?}", block.number, block.senders);
             self.full_block_cache.insert(block_hash, block);
         }
     }
@@ -474,7 +475,10 @@ where
                             }
                         }
                         CacheAction::CacheNewCanonicalChain { chain_change } => {
+                            println!("cache_new_canonical_chain - chain_change blocks: {:?}", chain_change.blocks);
                             for block in chain_change.blocks {
+                                println!("cache_new_canonical_chain - block hash: {:?} - block number: {:?}", block.hash(), block.header.number);
+                                println!("cache_new_canonical_chain - block senders: {:?}", block.senders);
                                 this.on_new_block(block.hash(), Ok(Some(Arc::new(block))));
                             }
 

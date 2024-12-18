@@ -273,11 +273,9 @@ where
                     miner_ext.clone().into_rpc(),
                 )?;
 
-                // install the miner extension in the authenticated if configured
-                if modules.module_config().contains_any(&RethRpcModule::Miner) {
-                    debug!(target: "reth::cli", "Installing miner DA rpc enddpoint");
-                    auth_modules.merge_auth_methods(miner_ext.into_rpc())?;
-                }
+                // merge the miner module if configured in the regular http server
+                debug!(target: "reth::cli", "Installing miner DA rpc enddpoint");
+                modules.merge_if_module_configured(RethRpcModule::Miner, miner_ext.into_rpc())?;
 
                 Ok(())
             })
